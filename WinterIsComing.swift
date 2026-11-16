@@ -12,6 +12,8 @@ import SpriteKit
 
 enum Cfg {
     static var targetFlakes = 260            // number of flakes falling at the same time
+    static let stormFlakes = 2500            // number of flakes in Snowstorm mode
+    static let stormWind: CGFloat = 4        // Snowstorm wind is this many times stronger
     static let colW: CGFloat = 3             // width of one column of the snow height map (px)
     static let pileMaxFraction: CGFloat = 0.5 // max snow height on windows, the Dock and the screen bottom, as a share of screen height (0.5 = half)
     static let gravity: CGFloat = 900        // gravity for snow sliding off
@@ -1041,7 +1043,8 @@ final class SnowScene: SKScene {
 
     func stepFlakes(_ dt: CGFloat) {
         // A few sines at different frequencies add up to gusty wind
-        let wind = 14 * sin(t * 0.11) + 9 * sin(t * 0.37 + 1.3) + 6 * sin(t * 0.9 + 0.4)
+        let storm = Cfg.targetFlakes >= Cfg.stormFlakes
+        let wind = (14 * sin(t * 0.11) + 9 * sin(t * 0.37 + 1.3) + 6 * sin(t * 0.9 + 0.4)) * (storm ? Cfg.stormWind : 1)
         var normal = 0
         var i = flakes.count - 1
         while i >= 0 {
@@ -1108,8 +1111,8 @@ final class SnowScene: SKScene {
             i -= 1
         }
 
-        // Top up flakes (max 6 per frame so they don't appear in a row)
-        let deficit = min(6, Cfg.targetFlakes - normal)
+        // Top up flakes (a few per frame so they don't appear in a row; more when there are lots of flakes)
+        let deficit = min(max(6, Cfg.targetFlakes / 40), Cfg.targetFlakes - normal)
         if deficit > 0 { for _ in 0..<deficit { spawnFlake() } }
     }
 }
@@ -1194,7 +1197,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let amount = NSMenuItem(title: "Snow Amount", action: nil, keyEquivalent: "")
         let sub = NSMenu()
-        for (title, n) in [("Light", 120), ("Medium", 260), ("Heavy", 500), ("Extra Heavy", 1000)] {
+        for (title, n) in [("Light", 120), ("Medium", 260), ("Heavy", 500), ("Extra Heavy", 1000), ("Snowstorm", Cfg.stormFlakes)] {
             let it = NSMenuItem(title: title, action: #selector(setAmount(_:)), keyEquivalent: "")
             it.target = self
             it.tag = n
