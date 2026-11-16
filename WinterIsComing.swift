@@ -14,6 +14,8 @@ enum Cfg {
     static var targetFlakes = 260            // number of flakes falling at the same time
     static let stormFlakes = 2500            // number of flakes in Snowstorm mode
     static let stormWind: CGFloat = 4        // Snowstorm wind is this many times stronger
+    static let burstFlakes = 4000            // flakes dropped at once by "Snow Burst!"
+    static var snowmanBalls = 3              // snowballs needed for a snowman (2...10, also in the menu)
     static let colW: CGFloat = 3             // width of one column of the snow height map (px)
     static let pileMaxFraction: CGFloat = 0.5 // max snow height on windows, the Dock and the screen bottom, as a share of screen height (0.5 = half)
     static let gravity: CGFloat = 900        // gravity for snow sliding off
@@ -558,7 +560,7 @@ final class SnowScene: SKScene {
             b.vel = .zero
             let st = stack(from: base(of: b))
             for (i, x) in st.enumerated() { x.node.zPosition = 6.5 + CGFloat(i) * 0.3 }
-            if st.count == 3 { makeSnowman(st) }
+            if st.count == Cfg.snowmanBalls { makeSnowman(st) }
         } else {
             b.node.zPosition = 6.5
             // Let go: it falls (with a bit of the throw) and lands on whatever is below
@@ -579,12 +581,17 @@ final class SnowScene: SKScene {
         lastMouse = NSEvent.mouseLocation
     }
 
+    /// Snow Burst: drop a huge load of flakes across the whole sky at once
+    func burst() {
+        for _ in 0..<Cfg.burstFlakes { spawnFlake(y: rnd(size.height * 0.2, size.height + 40)) }
+    }
+
     /// A ball dropped just above another ball (that isn't already a full snowman) gets stacked on it
     func stackTarget(for b: Snowball) -> Snowball? {
         var best: Snowball?
         var bestDist = CGFloat.greatestFiniteMagnitude
         for c in balls where c !== b && !c.falling && !c.dragging && !c.node.isHidden {
-            guard above(c) == nil, stack(from: base(of: c)).count < 3 else { continue }
+            guard above(c) == nil, stack(from: base(of: c)).count < Cfg.snowmanBalls else { continue }
             let dx = abs(b.x - c.x), dy = b.y - c.y
             guard dx < c.r * 0.9 + b.r * 0.3, dy > 0, dy < c.r + b.r + 30 else { continue }
             if dx < bestDist { best = c; bestDist = dx }
@@ -599,9 +606,9 @@ final class SnowScene: SKScene {
         }
     }
 
-    /// Three stacked balls become a snowman: face and scarf on the head, buttons and stick arms on the body
+    /// A full stack becomes a snowman: face and scarf on the top ball, buttons and stick arms on the one below it
     func makeSnowman(_ st: [Snowball]) {
-        let body = st[1], head = st[2]
+        let body = st[st.count - 2], head = st[st.count - 1]
         removeDecor(stackOf: head)
         let R = head.r
 
@@ -1135,6 +1142,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem!
     var pauseItem: NSMenuItem!
     var amountItems: [NSMenuItem] = []
+    var snowmanItems: [NSMenuItem] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard let screen = NSScreen.screens.first else { return }
@@ -1208,6 +1216,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         amount.submenu = sub
         menu.addItem(amount)
 
+        let burst = NSMenuItem(title: "Snow Burst!", action: #selector(snowBurst), keyEquivalent: "b")
+        burst.target = self
+        menu.addItem(burst)
+
+        // Remember the snowman size between launches
+        let saved = UserDefaults.standard.integer(forKey: "snowmanBalls")
+        if (2...10).contains(saved) { Cfg.snowmanBalls = saved }
+
+        let man = NSMenuItem(title: "Snowman Size", action: nil, keyEquivalent: "")
+        let manSub = NSMenu()
+        for n in 2...10 {
+            let it = NSMenuItem(title: "\(n) Snowballs", action: #selector(setSnowman(_:)), keyEquivalent: "")
+            it.target = self
+            it.tag = n
+            it.state = (n == Cfg.snowmanBalls) ? .on : .off
+            manSub.addItem(it)
+            snowmanItems.append(it)
+        }
+        man.submenu = manSub
+        menu.addItem(man)
+
         let clear = NSMenuItem(title: "Clear Snow", action: #selector(clearSnow), keyEquivalent: "c")
         clear.target = self
         menu.addItem(clear)
@@ -1234,6 +1263,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func clearSnow() { scene.clearAll() }
+
+    @objc func snowBurst() { scene.burst() }
+
+    @objc func setSnowman(_ sender: NSMenuItem) {
+        Cfg.snowmanBalls = sender.tag
+        UserDefaults.standard.set(sender.tag, forKey: "snowmanBalls")
+        for it in snowmanItems { it.state = (it === sender) ? .on : .off }
+    }
 
     @objc func screensChanged() {
         guard let screen = NSScreen.screens.first else { return }
