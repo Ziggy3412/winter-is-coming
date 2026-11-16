@@ -13,12 +13,10 @@ import SpriteKit
 enum Cfg {
     static var targetFlakes = 260            // number of flakes falling at the same time
     static let colW: CGFloat = 3             // width of one column of the snow height map (px)
-    static let windowPileMax: CGFloat = 40   // max snow height on top of a window
-    static let groundPileMax: CGFloat = 90   // max snow height at the bottom of the screen
+    static let pileMaxFraction: CGFloat = 0.5 // max snow height on windows, the Dock and the screen bottom, as a share of screen height (0.5 = half)
     static let gravity: CGFloat = 900        // gravity for snow sliding off
     static let pollInterval = 1.0 / 30.0     // how often window positions are checked (s)
     static let maxClumps = 900               // max number of falling snow clumps at once
-    static let dockPileMax: CGFloat = 40     // max snow height on the Dock
     static let dockPad: CGFloat = 4          // extra width of the Dock pile on each side of the icon area
     static let dockTopOffset: CGFloat = -1   // lower it if the snow floats above the Dock, raise it if it sinks in
     static let fallSpeed: CGFloat = 1.5      // falling speed multiplier (1 = original, bigger = faster)
@@ -382,7 +380,7 @@ final class SnowScene: SKScene {
     func resetGround() {
         for b in balls where b.pile === ground { b.drop(vel: .zero) }
         ground?.remove()
-        ground = Pile(minX: 0, topY: 0, width: size.width, maxH: Cfg.groundPileMax, parent: world)
+        ground = Pile(minX: 0, topY: 0, width: size.width, maxH: size.height * Cfg.pileMaxFraction, parent: world)
     }
 
     func clearAll() {
@@ -936,7 +934,7 @@ final class SnowScene: SKScene {
                     // Width changed: drop the snow and start a new pile
                     release(pile, vel: .zero, id: id)
                     pile.remove()
-                    piles[id] = Pile(minX: r.minX, topY: r.maxY, width: r.width, maxH: Cfg.windowPileMax, parent: world)
+                    piles[id] = Pile(minX: r.minX, topY: r.maxY, width: r.width, maxH: size.height * Cfg.pileMaxFraction, parent: world)
                 } else if abs(old.minX - r.minX) > 0.3 || abs(old.maxY - r.maxY) > 0.3 {
                     // Window dragged: fling the snow off
                     let v = CGVector(dx: (r.minX - old.minX) / dt, dy: (r.maxY - old.maxY) / dt)
@@ -945,7 +943,7 @@ final class SnowScene: SKScene {
                     release(pile, vel: v, id: id)
                 }
             } else {
-                piles[id] = Pile(minX: r.minX, topY: r.maxY, width: r.width, maxH: Cfg.windowPileMax, parent: world)
+                piles[id] = Pile(minX: r.minX, topY: r.maxY, width: r.width, maxH: size.height * Cfg.pileMaxFraction, parent: world)
             }
             lastRect[id] = r
         }
@@ -1006,7 +1004,7 @@ final class SnowScene: SKScene {
         dockRect = r
         if let r = r {
             dockPile = Pile(minX: r.minX, topY: r.maxY + Cfg.dockTopOffset, width: r.width,
-                            maxH: Cfg.dockPileMax, parent: world)
+                            maxH: size.height * Cfg.pileMaxFraction, parent: world)
         }
     }
 
