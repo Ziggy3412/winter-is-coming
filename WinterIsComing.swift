@@ -13,12 +13,12 @@ import SpriteKit
 enum Cfg {
     static var targetFlakes = 260            // number of flakes falling at the same time
     static let colW: CGFloat = 3             // width of one column of the snow height map (px)
-    static let windowPileMax: CGFloat = 16   // max snow height on top of a window
-    static let groundPileMax: CGFloat = 34   // max snow height at the bottom of the screen
+    static let windowPileMax: CGFloat = 40   // max snow height on top of a window
+    static let groundPileMax: CGFloat = 90   // max snow height at the bottom of the screen
     static let gravity: CGFloat = 900        // gravity for snow sliding off
     static let pollInterval = 1.0 / 30.0     // how often window positions are checked (s)
     static let maxClumps = 900               // max number of falling snow clumps at once
-    static let dockPileMax: CGFloat = 18     // max snow height on the Dock
+    static let dockPileMax: CGFloat = 40     // max snow height on the Dock
     static let dockPad: CGFloat = 4          // extra width of the Dock pile on each side of the icon area
     static let dockTopOffset: CGFloat = -1   // lower it if the snow floats above the Dock, raise it if it sinks in
     static let fallSpeed: CGFloat = 1.5      // falling speed multiplier (1 = original, bigger = faster)
@@ -1196,7 +1196,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let amount = NSMenuItem(title: "Snow Amount", action: nil, keyEquivalent: "")
         let sub = NSMenu()
-        for (title, n) in [("Light", 120), ("Medium", 260), ("Heavy", 500)] {
+        for (title, n) in [("Light", 120), ("Medium", 260), ("Heavy", 500), ("Extra Heavy", 1000)] {
             let it = NSMenuItem(title: title, action: #selector(setAmount(_:)), keyEquivalent: "")
             it.target = self
             it.tag = n
